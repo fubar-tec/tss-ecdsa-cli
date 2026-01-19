@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, rmSync } from "fs";
+import { join } from "path";
 import { spawn } from "bun";
 import { startManager, type ManagerInstance } from "../helpers/manager";
 import { cliExists, getCliBinary, runCli } from "../helpers/cli";
@@ -15,7 +15,6 @@ import { CLI_BINARY, TEST_KEYS_DIR, TEST_ENV } from "../setup";
 describe("Message Signing (ECDSA)", () => {
   let manager: ManagerInstance;
   const keyFiles: string[] = [];
-  let generatedKeys = false;
 
   const sessionId = `sign-test-${Date.now()}`;
   const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-s1.json`);
@@ -49,7 +48,6 @@ describe("Message Signing (ECDSA)", () => {
     const [exit1, exit2] = await Promise.all([proc1.exited, proc2.exited]);
 
     if (exit1 === 0 && exit2 === 0) {
-      generatedKeys = true;
       keyFiles.push(keyFile1, keyFile2);
     } else {
       console.warn("Failed to generate keys for signing tests");
@@ -57,9 +55,7 @@ describe("Message Signing (ECDSA)", () => {
   }, 180000);
 
   afterAll(async () => {
-    if (manager) {
-      await manager.stop();
-    }
+    await manager.stop();
 
     keyFiles.forEach((file) => {
       if (existsSync(file)) {
@@ -69,8 +65,6 @@ describe("Message Signing (ECDSA)", () => {
   });
 
   test("2-of-2 signing produces valid signature", async () => {
-    if (!manager || !generatedKeys) return;
-
     const message = randomMessageHash();
     const binary = getCliBinary();
 
@@ -146,8 +140,6 @@ describe("Message Signing (ECDSA)", () => {
   }, 120000);
 
   test("signing same message twice produces different signatures (due to random k)", async () => {
-    if (!manager || !generatedKeys) return;
-
     const message = randomMessageHash();
     const binary = getCliBinary();
 
@@ -184,8 +176,6 @@ describe("Message Signing (ECDSA)", () => {
   }, 240000);
 
   test("different HD paths produce different signatures", async () => {
-    if (!manager || !generatedKeys) return;
-
     const message = randomMessageHash();
     const binary = getCliBinary();
 
@@ -225,7 +215,6 @@ describe("Message Signing (ECDSA)", () => {
 describe("Message Signing (EdDSA)", () => {
   let manager: ManagerInstance;
   const keyFiles: string[] = [];
-  let generatedKeys = false;
 
   const sessionId = `ed-sign-test-${Date.now()}`;
   const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-ed1.json`);
@@ -259,15 +248,12 @@ describe("Message Signing (EdDSA)", () => {
     const [exit1, exit2] = await Promise.all([proc1.exited, proc2.exited]);
 
     if (exit1 === 0 && exit2 === 0) {
-      generatedKeys = true;
       keyFiles.push(keyFile1, keyFile2);
     }
   }, 180000);
 
   afterAll(async () => {
-    if (manager) {
-      await manager.stop();
-    }
+    await manager.stop();
 
     keyFiles.forEach((file) => {
       if (existsSync(file)) {
@@ -277,8 +263,6 @@ describe("Message Signing (EdDSA)", () => {
   });
 
   test("2-of-2 EdDSA signing produces valid signature", async () => {
-    if (!manager || !generatedKeys) return;
-
     const message = randomMessageHash();
     const binary = getCliBinary();
 
@@ -317,14 +301,10 @@ describe("Signing Error Handling", () => {
   });
 
   afterAll(async () => {
-    if (manager) {
-      await manager.stop();
-    }
+    await manager.stop();
   });
 
   test("signing with invalid message hash fails", async () => {
-    if (!manager) return;
-
     const sessionId = generateSessionId();
     const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-err1.json`);
     const keyFile2 = join(TEST_KEYS_DIR, `${sessionId}-err2.json`);
@@ -359,8 +339,6 @@ describe("Signing Error Handling", () => {
   }, 180000);
 
   test("signing with non-existent key file fails", async () => {
-    if (!manager) return;
-
     const message = randomMessageHash();
     const result = await runCli(
       ["sign", "/non/existent/key.json", "1/2", message, "-a", manager.url],

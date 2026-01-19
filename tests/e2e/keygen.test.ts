@@ -5,10 +5,11 @@ import { spawn } from "bun";
 import { startManager, type ManagerInstance } from "../helpers/manager";
 import { cliExists, getCliBinary, runCli } from "../helpers/cli";
 import { generateSessionId } from "../helpers/crypto";
+import type { EcdsaKeyFile, EddsaKeyFile } from "../helpers/types";
 import { CLI_BINARY, TEST_KEYS_DIR, TEST_ENV } from "../setup";
 
 describe("Key Generation (ECDSA)", () => {
-  let manager: ManagerInstance;
+  let manager: ManagerInstance | undefined;
   let keyFiles: string[] = [];
 
   beforeAll(async () => {
@@ -68,8 +69,8 @@ describe("Key Generation (ECDSA)", () => {
     expect(existsSync(keyFile1)).toBe(true);
     expect(existsSync(keyFile2)).toBe(true);
 
-    const key1 = JSON.parse(readFileSync(keyFile1, "utf-8"));
-    const key2 = JSON.parse(readFileSync(keyFile2, "utf-8"));
+    const key1 = JSON.parse(readFileSync(keyFile1, "utf-8")) as EcdsaKeyFile;
+    const key2 = JSON.parse(readFileSync(keyFile2, "utf-8")) as EcdsaKeyFile;
 
     expect(key1.party_keys).toBeDefined();
     expect(key1.shared_keys).toBeDefined();
@@ -167,7 +168,7 @@ describe("Key Generation (ECDSA)", () => {
 });
 
 describe("Key Generation (EdDSA)", () => {
-  let manager: ManagerInstance;
+  let manager: ManagerInstance | undefined;
   let keyFiles: string[] = [];
 
   beforeAll(async () => {
@@ -227,13 +228,13 @@ describe("Key Generation (EdDSA)", () => {
     expect(existsSync(keyFile1)).toBe(true);
     expect(existsSync(keyFile2)).toBe(true);
 
-    const key1 = JSON.parse(readFileSync(keyFile1, "utf-8"));
-    const key2 = JSON.parse(readFileSync(keyFile2, "utf-8"));
+    const key1 = JSON.parse(readFileSync(keyFile1, "utf-8")) as EddsaKeyFile;
+    const key2 = JSON.parse(readFileSync(keyFile2, "utf-8")) as EddsaKeyFile;
 
     expect(key1.party_keys).toBeDefined();
     expect(key1.shared_keys).toBeDefined();
 
-    expect(key1.paillier_key_vec).toBeUndefined();
+    expect((key1 as unknown as EcdsaKeyFile).paillier_key_vec).toBeUndefined();
 
     expect(key1.shared_keys.y).toEqual(key2.shared_keys.y);
   }, 120000);

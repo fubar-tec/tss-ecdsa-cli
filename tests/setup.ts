@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, afterEach } from "bun:test";
-import { existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync } from "fs";
+import { join } from "path";
 
 export const TEST_ROOT = import.meta.dir;
 export const PROJECT_ROOT = join(TEST_ROOT, "..");

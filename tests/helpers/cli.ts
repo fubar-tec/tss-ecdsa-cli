@@ -1,5 +1,5 @@
 import { spawn, type Subprocess } from "bun";
-import { existsSync } from "node:fs";
+import { existsSync } from "fs";
 import { CLI_BINARY, CLI_DEBUG_BINARY, TEST_ENV, trackProcess, untrackProcess } from "../setup";
 
 export interface CLIResult {

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync } from "fs";
+import { join } from "path";
 import { cliExists, getCliBinary } from "../helpers/cli";
 import { CLI_BINARY, CLI_DEBUG_BINARY, PROJECT_ROOT } from "../setup";
 

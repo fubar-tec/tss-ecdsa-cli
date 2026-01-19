@@ -1,4 +1,4 @@
-import * as path from "node:path";
+import * as path from "path";
 import { includeIgnoreFile } from "@eslint/compat";
 import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
