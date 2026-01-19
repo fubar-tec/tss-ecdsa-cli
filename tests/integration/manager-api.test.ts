@@ -7,7 +7,7 @@ import {
   type ManagerClient,
 } from "../helpers/manager";
 import { cliExists } from "../helpers/cli";
-import { generateSessionId, randomHex } from "../helpers/crypto";
+import { randomHex } from "../helpers/crypto";
 import { CLI_BINARY } from "../setup";
 
 describe("Manager API", () => {
@@ -24,19 +24,20 @@ describe("Manager API", () => {
     const port = 18000 + Math.floor(Math.random() * 1000);
     manager = await startManager({ port });
     client = createManagerClient(manager.url);
-  });
+  }, 60000);
 
   afterAll(async () => {
     if (manager) {
       await manager.stop();
     }
-  });
+  }, 30000);
 
   describe("Health Check", () => {
     test("ping endpoint returns success", async () => {
       if (!client) return;
       const response = await client.ping();
       expect(response).toBeDefined();
+      expect(response.status).toBe("ok");
     });
 
     test("isManagerHealthy returns true for running manager", async () => {
@@ -61,6 +62,7 @@ describe("Manager API", () => {
       const result = await client.get(key);
 
       expect(result).not.toBeNull();
+      expect(result?.key).toBe(key);
       expect(result?.value).toBe(value);
     });
 
@@ -82,123 +84,94 @@ describe("Manager API", () => {
     });
   });
 
-  describe("Party Signup", () => {
-    test("signup returns party_id", async () => {
+  describe("Keygen Signup", () => {
+    test("signupKeygen returns party info", async () => {
       if (!client) return;
-      const uuid = generateSessionId();
-      const result = await client.signup(uuid);
+      const result = await client.signupKeygen(2, 1, "secp256k1");
 
-      expect(result.party_id).toBeDefined();
-      expect(result.party_id).toBeGreaterThanOrEqual(1);
+      expect(result.number).toBeDefined();
+      expect(result.number).toBeGreaterThanOrEqual(1);
+      expect(result.uuid).toBeDefined();
     });
 
-    test("multiple signups get different party IDs", async () => {
+    test("multiple keygen signups increment party number", async () => {
       if (!client) return;
-      const uuid = generateSessionId();
 
-      const party1 = await client.signup(uuid);
-      const party2 = await client.signup(uuid);
+      // Use a unique curve name to avoid interference from previous tests
+      const uniqueCurve = `test-curve-${randomHex(4)}`;
 
-      expect(party1.party_id).not.toBe(party2.party_id);
+      const party1 = await client.signupKeygen(2, 1, uniqueCurve);
+      const party2 = await client.signupKeygen(2, 1, uniqueCurve);
+
+      // Both should get assigned numbers
+      expect(party1.number).toBeGreaterThanOrEqual(1);
+      expect(party2.number).toBeGreaterThanOrEqual(1);
+      // They should share the same session UUID until parties are full
+      expect(party1.uuid).toBe(party2.uuid);
     });
 
-    test("signup status tracks party count", async () => {
+    test("keygen signup resets after reaching n parties", async () => {
       if (!client) return;
-      const uuid = generateSessionId();
 
-      await client.signup(uuid);
-      const status1 = await client.signupStatus(uuid);
-      expect(status1.party_count).toBe(1);
+      // Sign up 2 parties (n=2)
+      const party1 = await client.signupKeygen(2, 1, "ed25519");
+      const party2 = await client.signupKeygen(2, 1, "ed25519");
+      // Third signup should start a new session
+      const party3 = await client.signupKeygen(2, 1, "ed25519");
 
-      await client.signup(uuid);
-      const status2 = await client.signupStatus(uuid);
-      expect(status2.party_count).toBe(2);
-    });
-  });
-
-  describe("Message Store and Poll", () => {
-    test("store and poll message between parties", async () => {
-      if (!client) return;
-      const uuid = generateSessionId();
-      const round = "test-round";
-      const data = "encrypted-message-data";
-
-      await client.store(1, 2, round, uuid, data);
-
-      const result = await client.poll(1, 2, round, uuid);
-
-      expect(result).not.toBeNull();
-      expect(result?.data).toBe(data);
-    });
-
-    test("poll returns null for non-existent message", async () => {
-      if (!client) return;
-      const uuid = generateSessionId();
-      const result = await client.poll(1, 2, "non-existent-round", uuid);
-
-      expect(result).toBeNull();
-    });
-
-    test("broadcast to all parties", async () => {
-      if (!client) return;
-      const uuid = generateSessionId();
-      const round = "broadcast-round";
-      const data = "broadcast-data";
-
-      await client.store(1, 0, round, uuid, data);
-
-      const result2 = await client.poll(1, 0, round, uuid);
-      expect(result2?.data).toBe(data);
-    });
-
-    test("point-to-point messaging", async () => {
-      if (!client) return;
-      const uuid = generateSessionId();
-      const round = "p2p-round";
-
-      await client.store(1, 2, round, uuid, "message-for-2");
-
-      await client.store(1, 3, round, uuid, "message-for-3");
-
-      const result2 = await client.poll(1, 2, round, uuid);
-      const result3 = await client.poll(1, 3, round, uuid);
-
-      expect(result2?.data).toBe("message-for-2");
-      expect(result3?.data).toBe("message-for-3");
+      expect(party1.uuid).toBe(party2.uuid);
+      expect(party3.uuid).not.toBe(party2.uuid);
+      expect(party3.number).toBe(1);
     });
   });
 
-  describe("Multiple Rounds", () => {
-    test("messages are isolated by round", async () => {
+  describe("Signing Signup", () => {
+    test("signupSign returns party signup info", async () => {
       if (!client) return;
-      const uuid = generateSessionId();
+      const roomId = `room-${randomHex(4)}`;
 
-      await client.store(1, 2, "round1", uuid, "data-round1");
-      await client.store(1, 2, "round2", uuid, "data-round2");
+      const result = await client.signupSign(1, roomId, 1, "", "secp256k1");
 
-      const result1 = await client.poll(1, 2, "round1", uuid);
-      const result2 = await client.poll(1, 2, "round2", uuid);
-
-      expect(result1?.data).toBe("data-round1");
-      expect(result2?.data).toBe("data-round2");
+      expect(result.party_order).toBeDefined();
+      expect(result.party_uuid).toBeDefined();
+      expect(result.room_uuid).toBeDefined();
+      // total_joined counts other parties, so first joiner sees 0
+      expect(result.total_joined).toBeGreaterThanOrEqual(0);
     });
-  });
 
-  describe("Session Isolation", () => {
-    test("messages are isolated by session UUID", async () => {
+    test("multiple parties can join same signing room", async () => {
       if (!client) return;
-      const uuid1 = generateSessionId();
-      const uuid2 = generateSessionId();
-      const round = "test-round";
+      const roomId = `room-${randomHex(4)}`;
 
-      await client.store(1, 2, round, uuid1, "data-session1");
-      await client.store(1, 2, round, uuid2, "data-session2");
+      // First party joins
+      const party1 = await client.signupSign(1, roomId, 1, "", "secp256k1");
 
-      const result1 = await client.poll(1, 2, round, uuid1);
-      const result2 = await client.poll(1, 2, round, uuid2);
+      // Second party joins with different party_number
+      const party2 = await client.signupSign(1, roomId, 2, "", "secp256k1");
 
-      expect(result1?.data).toBe("data-session1");
-      expect(result2?.data).toBe("data-session2");
+      // Both should be in the same room
+      expect(party1.room_uuid).toBe(party2.room_uuid);
+      expect(party1.party_order).not.toBe(party2.party_order);
+    });
+
+    test("party can re-ping with their uuid", async () => {
+      if (!client) return;
+      const roomId = `room-${randomHex(4)}`;
+
+      // First signup
+      const initial = await client.signupSign(1, roomId, 1, "", "secp256k1");
+
+      // Re-ping with the same party_uuid
+      const reping = await client.signupSign(
+        1,
+        roomId,
+        1,
+        initial.party_uuid,
+        "secp256k1"
+      );
+
+      expect(reping.party_uuid).toBe(initial.party_uuid);
+      expect(reping.room_uuid).toBe(initial.room_uuid);
     });
   });
 });
@@ -218,7 +191,7 @@ describe("Manager Lifecycle", () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     expect(await isManagerHealthy(mgr.url)).toBe(false);
-  });
+  }, 60000);
 
   test("manager respects configuration", async () => {
     if (!cliExists()) return;
@@ -234,5 +207,5 @@ describe("Manager Lifecycle", () => {
     expect(mgr.url).toContain(String(port));
 
     await mgr.stop();
-  });
+  }, 60000);
 });

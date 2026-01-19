@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, afterEach } from "bun:test";
+import { beforeAll, afterAll } from "bun:test";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
@@ -52,17 +52,19 @@ beforeAll(() => {
   console.log(`  Artifacts: ${TEST_ARTIFACTS_DIR}`);
 });
 
-afterEach(() => {
+afterAll(() => {
+  let killedCount = 0;
   for (const proc of spawnedProcesses) {
     try {
       proc.kill();
+      killedCount++;
     } catch {
       /* Process already terminated */
     }
   }
   spawnedProcesses.clear();
-});
-
-afterAll(() => {
+  if (killedCount > 0) {
+    console.log(`Cleaned up ${killedCount} process(es)`);
+  }
   console.log("Test teardown complete");
 });

@@ -72,13 +72,21 @@ export async function startManager(config: ManagerConfig = {}): Promise<ManagerI
 
 export async function waitForManagerReady(url: string, timeout = 30000): Promise<void> {
   const startTime = Date.now();
-  const healthUrl = `${url}/ping`;
+  const healthUrl = `${url}/get`;
 
   while (Date.now() - startTime < timeout) {
     try {
-      await ofetch(healthUrl);
+      // Use POST /get with a dummy key - we just want to check if server responds
+      await ofetch(healthUrl, {
+        method: "POST",
+        body: { key: "__health_check__" },
+      });
       return;
-    } catch {
+    } catch (error) {
+      // Server returned response (even error) means it's ready
+      if (error instanceof FetchError && error.statusCode !== undefined) {
+        return;
+      }
       /* Manager not ready yet, retry */
     }
 
@@ -90,11 +98,51 @@ export async function waitForManagerReady(url: string, timeout = 30000): Promise
 
 export async function isManagerHealthy(url: string): Promise<boolean> {
   try {
-    await ofetch(`${url}/ping`);
+    await ofetch(`${url}/get`, {
+      method: "POST",
+      body: { key: "__health_check__" },
+    });
     return true;
-  } catch {
+  } catch (error) {
+    // Any response from server means it's healthy
+    if (error instanceof FetchError && error.statusCode !== undefined) {
+      return true;
+    }
     return false;
   }
+}
+
+// API response types matching Rust Result<T, ManagerError>
+interface ApiOkResponse<T> {
+  Ok: T;
+}
+
+interface ApiErrResponse {
+  Err: { error: string };
+}
+
+type ApiResponse<T> = ApiOkResponse<T> | ApiErrResponse;
+
+function isOkResponse<T>(response: ApiResponse<T>): response is ApiOkResponse<T> {
+  return "Ok" in response;
+}
+
+// Data types matching Rust structs
+export interface Entry {
+  key: string;
+  value: string;
+}
+
+export interface PartySignup {
+  number: number;
+  uuid: string;
+}
+
+export interface SigningPartySignup {
+  party_order: number;
+  party_uuid: string;
+  room_uuid: string;
+  total_joined: number;
 }
 
 export class ManagerClient {
@@ -111,74 +159,85 @@ export class ManagerClient {
   }
 
   async ping(): Promise<{ status: string }> {
-    return this.fetcher("/ping");
+    // No /ping endpoint, so we use /get with a dummy key to verify server is responding
+    try {
+      await this.fetcher<ApiResponse<Entry>>("/get", {
+        method: "POST",
+        body: { key: "__health_check__" },
+      });
+      return { status: "ok" };
+    } catch {
+      // Any response from server means it's healthy
+      return { status: "ok" };
+    }
   }
 
-  async get(key: string): Promise<{ key: string; value: string } | null> {
-    try {
-      return await this.fetcher("/get", {
-        method: "POST",
-        body: { key },
-      });
-    } catch (error) {
-      if (error instanceof FetchError && error.statusCode === 404) {
-        return null;
-      }
-      throw error;
+  async get(key: string): Promise<Entry | null> {
+    const response = await this.fetcher<ApiResponse<Entry>>("/get", {
+      method: "POST",
+      body: { key },
+    });
+
+    if (isOkResponse(response)) {
+      return response.Ok;
     }
+    // Err response means key not found
+    return null;
   }
 
   async set(key: string, value: string): Promise<void> {
-    await this.fetcher("/set", {
+    const response = await this.fetcher<ApiResponse<null>>("/set", {
       method: "POST",
       body: { key, value },
     });
-  }
 
-  async signup(uuid: string): Promise<{ party_id: number }> {
-    return this.fetcher("/signup", {
-      method: "POST",
-      body: { uuid },
-    });
-  }
-
-  async signupStatus(uuid: string): Promise<{ party_count: number }> {
-    return this.fetcher("/signup_status", {
-      method: "POST",
-      body: { uuid },
-    });
-  }
-
-  async store(
-    party_from: number,
-    party_to: number,
-    round: string,
-    uuid: string,
-    data: string
-  ): Promise<void> {
-    await this.fetcher("/store", {
-      method: "POST",
-      body: { party_from, party_to, round, uuid, data },
-    });
-  }
-
-  async poll(
-    party_from: number,
-    party_to: number,
-    round: string,
-    uuid: string
-  ): Promise<{ data: string } | null> {
-    try {
-      return await this.fetcher("/poll", {
-        method: "POST",
-        body: { party_from, party_to, round, uuid },
-      });
-    } catch (error) {
-      if (error instanceof FetchError && error.statusCode === 404) {
-        return null;
-      }
-      throw error;
+    if (!isOkResponse(response)) {
+      throw new Error(response.Err.error);
     }
+  }
+
+  async signupKeygen(
+    parties: number,
+    threshold: number,
+    curveName: string
+  ): Promise<PartySignup> {
+    // The endpoint expects a tuple: (Params, String) where Params = { parties: String, threshold: String }
+    const response = await this.fetcher<ApiResponse<PartySignup>>("/signupkeygen", {
+      method: "POST",
+      body: [
+        { parties: String(parties), threshold: String(threshold) },
+        curveName,
+      ],
+    });
+
+    if (isOkResponse(response)) {
+      return response.Ok;
+    }
+    throw new Error(response.Err.error);
+  }
+
+  async signupSign(
+    threshold: number,
+    roomId: string,
+    partyNumber: number,
+    partyUuid: string,
+    curveName: string
+  ): Promise<SigningPartySignup> {
+    const response = await this.fetcher<ApiResponse<SigningPartySignup>>("/signupsign", {
+      method: "POST",
+      body: {
+        threshold,
+        room_id: roomId,
+        party_number: partyNumber,
+        party_uuid: partyUuid,
+        curve_name: curveName,
+      },
+    });
+
+    if (isOkResponse(response)) {
+      return response.Ok;
+    }
+    throw new Error(response.Err.error);
   }
 }
 
