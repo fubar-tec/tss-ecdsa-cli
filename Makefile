@@ -8,7 +8,9 @@ BIN := ./target/release/tss_cli
 MANAGER_ADDR := http://127.0.0.1:8001
 TEST_MESSAGE := 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 
-.PHONY: all build clean manager keygen sign pubkey test help
+.PHONY: all build clean manager keygen sign pubkey test help \
+	bun-install bun-test bun-test-unit bun-test-integration bun-test-e2e bun-test-watch \
+	lint lint-fix format format-check
 
 # =============================================================================
 # BUILD
@@ -148,6 +150,69 @@ help:
 	@echo "  make test         Run full test automatically"
 	@echo "  make verify-keys  Verify both keys have same public key"
 	@echo ""
+	@echo "Bun.js Tests:"
+	@echo "  make bun-install        Install Bun dependencies"
+	@echo "  make bun-test           Run all Bun tests"
+	@echo "  make bun-test-unit      Run unit tests only"
+	@echo "  make bun-test-integration  Run integration tests"
+	@echo "  make bun-test-e2e       Run end-to-end tests"
+	@echo "  make bun-test-watch     Run tests in watch mode"
+	@echo ""
+	@echo "Linting & Formatting:"
+	@echo "  make lint               Run ESLint"
+	@echo "  make lint-fix           Run ESLint with auto-fix"
+	@echo "  make format             Format with Prettier"
+	@echo "  make format-check       Check formatting"
+	@echo ""
 	@echo "Custom:"
 	@echo "  make sign-custom MSG=<hex>   Sign custom message"
 	@echo "  make pubkey-path P=0/1/2     Derived public key"
+
+# =============================================================================
+# BUN.JS TESTS
+# =============================================================================
+
+bun-install:
+	@echo "Installing Bun dependencies..."
+	@cd tests && bun install
+	@echo "Done."
+
+bun-test: build bun-install
+	@echo "Running all Bun tests..."
+	@cd tests && bun test
+
+bun-test-unit: bun-install
+	@echo "Running unit tests..."
+	@cd tests && bun test unit
+
+bun-test-integration: build bun-install
+	@echo "Running integration tests..."
+	@cd tests && bun test integration
+
+bun-test-e2e: build bun-install
+	@echo "Running end-to-end tests..."
+	@cd tests && bun test e2e
+
+bun-test-watch: bun-install
+	@echo "Running tests in watch mode..."
+	@cd tests && bun test --watch
+
+bun-test-coverage: build bun-install
+	@echo "Running tests with coverage..."
+	@cd tests && bun test --coverage
+
+lint: bun-install
+	@echo "Running ESLint..."
+	@cd tests && bun run lint
+
+lint-fix: bun-install
+	@echo "Running ESLint with auto-fix..."
+	@cd tests && bun run lint:fix
+
+format: bun-install
+	@echo "Formatting with Prettier..."
+	@cd tests && bun run format
+
+format-check: bun-install
+	@echo "Checking formatting..."
+	@cd tests && bun run format:check

@@ -1,0 +1,34 @@
+{
+  "name": "tss-ecdsa-cli-tests",
+  "version": "0.0.0",
+  "description": "Bun.js test suite for TSS ECDSA/EdDSA CLI",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "test:unit": "bun test unit",
+    "test:integration": "bun test integration",
+    "test:e2e": "bun test e2e",
+    "build:rust": "cargo build --release",
+    "lint": "eslint --flag unstable_native_nodejs_ts_config",
+    "lint:fix": "eslint --flag unstable_native_nodejs_ts_config --fix",
+    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "format:fix": "prettier --write . --ignore-path ../../.gitignore"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.2",
+    "@types/bun": "1.3.6",
+    "@typescript-eslint/eslint-plugin": "8.53.1",
+    "@typescript-eslint/parser": "8.53.1",
+    "eslint": "9.39.2",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.8.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@eslint/compat": "2.0.1",
+    "ofetch": "1.5.1",
+    "typescript-eslint": "8.53.1"
+  }
+}

@@ -1,0 +1,6 @@
+[test]
+timeout = 300000
+coverage = true
+coverageThreshold = { line = 80, function = 80, statement = 80 }
+preload = ["./setup.ts"]
+smol = true
