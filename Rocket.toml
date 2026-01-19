@@ -1,20 +1,20 @@
-[development]
+[default]
 address = "0.0.0.0"
 port = 8001
 workers = 12
 keep_alive = 5
-log = "normal"
+log_level = "normal"
 
-[staging]
-address = "0.0.0.0"
-port = 8001
-workers = 8
-keep_alive = 5
-log = "normal"
-
-[production]
+[debug]
 address = "0.0.0.0"
 port = 8001
 workers = 12
 keep_alive = 5
-log = "critical"
+log_level = "normal"
+
+[release]
+address = "0.0.0.0"
+port = 8001
+workers = 12
+keep_alive = 5
+log_level = "critical"
