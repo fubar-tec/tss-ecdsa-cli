@@ -14,8 +14,7 @@ describe("Key Generation (ECDSA)", () => {
 
   beforeAll(async () => {
     if (!cliExists()) {
-      console.warn(`Skipping keygen tests: CLI binary not found at ${CLI_BINARY}`);
-      return;
+      throw new Error(`CLI binary not found before keygen tests at ${CLI_BINARY}`);
     }
 
     const port = 18100 + Math.floor(Math.random() * 1000);
@@ -38,7 +37,9 @@ describe("Key Generation (ECDSA)", () => {
   });
 
   test("2-of-2 keygen generates valid key files", async () => {
-    if (!manager) return;
+    if (!manager) {
+      throw new Error("Manager not started before keygen tests");
+    }
 
     const sessionId = generateSessionId();
     const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-party1.json`);
@@ -90,7 +91,9 @@ describe("Key Generation (ECDSA)", () => {
   }, 120000);
 
   test("pubkey command returns correct public key", async () => {
-    if (!manager) return;
+    if (!manager) {
+      throw new Error("Manager not started before pubkey tests");
+    }
 
     const sessionId = generateSessionId();
     const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-pub1.json`);
@@ -128,7 +131,9 @@ describe("Key Generation (ECDSA)", () => {
   }, 120000);
 
   test("pubkey with HD path returns derived key", async () => {
-    if (!manager) return;
+    if (!manager) {
+      throw new Error("Manager not started before pubkey with HD path tests");
+    }
 
     const sessionId = generateSessionId();
     const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-hd1.json`);
@@ -173,8 +178,7 @@ describe("Key Generation (EdDSA)", () => {
 
   beforeAll(async () => {
     if (!cliExists()) {
-      console.warn("Skipping EdDSA keygen tests: CLI binary not found");
-      return;
+      throw new Error("CLI binary not found before EdDSA keygen tests");
     }
 
     const port = 18200 + Math.floor(Math.random() * 1000);
@@ -197,7 +201,9 @@ describe("Key Generation (EdDSA)", () => {
   });
 
   test("2-of-2 EdDSA keygen generates valid key files", async () => {
-    if (!manager) return;
+    if (!manager) {
+      throw new Error("Manager not started before 2-of-2 EdDSA keygen tests");
+    }
 
     const sessionId = generateSessionId();
     const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-ed1.json`);

@@ -13,7 +13,7 @@ import {
 import { CLI_BINARY, TEST_KEYS_DIR, TEST_ENV } from "../setup";
 
 describe("Message Signing (ECDSA)", () => {
-  let manager: ManagerInstance;
+  let manager: ManagerInstance | undefined;
   const keyFiles: string[] = [];
 
   const sessionId = `sign-test-${Date.now()}`;
@@ -22,8 +22,7 @@ describe("Message Signing (ECDSA)", () => {
 
   beforeAll(async () => {
     if (!cliExists()) {
-      console.warn(`Skipping signing tests: CLI binary not found at ${CLI_BINARY}`);
-      return;
+      throw new Error(`CLI binary not found before signing tests at ${CLI_BINARY}`);
     }
 
     const port = 18300 + Math.floor(Math.random() * 1000);
@@ -55,7 +54,9 @@ describe("Message Signing (ECDSA)", () => {
   }, 180000);
 
   afterAll(async () => {
-    await manager.stop();
+    if (manager) {
+      await manager.stop();
+    }
 
     keyFiles.forEach((file) => {
       if (existsSync(file)) {
@@ -65,6 +66,10 @@ describe("Message Signing (ECDSA)", () => {
   });
 
   test("2-of-2 signing produces valid signature", async () => {
+    if (!manager) {
+      throw new Error("Manager not started before 2-of-2 signing tests");
+    }
+
     const message = randomMessageHash();
     const binary = getCliBinary();
 
@@ -106,6 +111,10 @@ describe("Message Signing (ECDSA)", () => {
   }, 120000);
 
   test("signing with HD path works", async () => {
+    if (!manager) {
+      throw new Error("Manager not started before signing with HD path tests");
+    }
+
     const message = randomMessageHash();
     const binary = getCliBinary();
     const hdPath = "0/0";
@@ -143,6 +152,12 @@ describe("Message Signing (ECDSA)", () => {
     const binary = getCliBinary();
 
     const sign1 = async () => {
+      if (!manager) {
+        throw new Error(
+          "Manager not started before signing same message twice produces different signatures (due to random k) tests"
+        );
+      }
+
       const proc1 = spawn({
         cmd: [binary, "sign", keyFile1, "1/2", message, "-a", manager.url],
         env: TEST_ENV,
@@ -179,6 +194,12 @@ describe("Message Signing (ECDSA)", () => {
     const binary = getCliBinary();
 
     const signWithPath = async (path: string) => {
+      if (!manager) {
+        throw new Error(
+          "Manager not started before different HD paths produce different signatures tests"
+        );
+      }
+
       const proc1 = spawn({
         cmd: [binary, "sign", keyFile1, "1/2", message, "-a", manager.url, "-p", path],
         env: TEST_ENV,
@@ -212,7 +233,7 @@ describe("Message Signing (ECDSA)", () => {
 });
 
 describe("Message Signing (EdDSA)", () => {
-  let manager: ManagerInstance;
+  let manager: ManagerInstance | undefined;
   const keyFiles: string[] = [];
 
   const sessionId = `ed-sign-test-${Date.now()}`;
@@ -221,8 +242,7 @@ describe("Message Signing (EdDSA)", () => {
 
   beforeAll(async () => {
     if (!cliExists()) {
-      console.warn("Skipping EdDSA signing tests: CLI binary not found");
-      return;
+      throw new Error("CLI binary not found before EdDSA signing tests");
     }
 
     const port = 18400 + Math.floor(Math.random() * 1000);
@@ -252,7 +272,9 @@ describe("Message Signing (EdDSA)", () => {
   }, 180000);
 
   afterAll(async () => {
-    await manager.stop();
+    if (manager) {
+      await manager.stop();
+    }
 
     keyFiles.forEach((file) => {
       if (existsSync(file)) {
@@ -262,6 +284,12 @@ describe("Message Signing (EdDSA)", () => {
   });
 
   test("2-of-2 EdDSA signing produces valid signature", async () => {
+    if (!manager) {
+      throw new Error(
+        "Manager not started before 2-of-2 EdDSA signing produces valid signature tests"
+      );
+    }
+
     const message = randomMessageHash();
     const binary = getCliBinary();
 
@@ -293,7 +321,9 @@ describe("Signing Error Handling", () => {
   let manager: ManagerInstance | undefined;
 
   beforeAll(async () => {
-    if (!cliExists()) return;
+    if (!cliExists()) {
+      throw new Error("CLI binary not found before signing error handling tests");
+    }
 
     const port = 18500 + Math.floor(Math.random() * 1000);
     manager = await startManager({ port });

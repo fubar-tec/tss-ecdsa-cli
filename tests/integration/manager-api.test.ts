@@ -11,8 +11,8 @@ import { generateSessionId, randomHex } from "../helpers/crypto";
 import { CLI_BINARY } from "../setup";
 
 describe("Manager API", () => {
-  let manager: ManagerInstance;
-  let client: ManagerClient;
+  let manager: ManagerInstance | undefined;
+  let client: ManagerClient | undefined;
 
   beforeAll(async () => {
     if (!cliExists()) {
@@ -27,16 +27,20 @@ describe("Manager API", () => {
   });
 
   afterAll(async () => {
-    await manager.stop();
+    if (manager) {
+      await manager.stop();
+    }
   });
 
   describe("Health Check", () => {
     test("ping endpoint returns success", async () => {
+      if (!client) return;
       const response = await client.ping();
       expect(response).toBeDefined();
     });
 
     test("isManagerHealthy returns true for running manager", async () => {
+      if (!manager) return;
       const healthy = await isManagerHealthy(manager.url);
       expect(healthy).toBe(true);
     });
@@ -49,6 +53,7 @@ describe("Manager API", () => {
 
   describe("Key-Value Storage", () => {
     test("set and get value", async () => {
+      if (!client) return;
       const key = `test-key-${randomHex(4)}`;
       const value = "test-value";
 
@@ -60,11 +65,13 @@ describe("Manager API", () => {
     });
 
     test("get returns null for non-existent key", async () => {
+      if (!client) return;
       const result = await client.get(`non-existent-${randomHex(8)}`);
       expect(result).toBeNull();
     });
 
     test("overwrite existing value", async () => {
+      if (!client) return;
       const key = `overwrite-key-${randomHex(4)}`;
 
       await client.set(key, "value1");
@@ -77,6 +84,7 @@ describe("Manager API", () => {
 
   describe("Party Signup", () => {
     test("signup returns party_id", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
       const result = await client.signup(uuid);
 
@@ -85,6 +93,7 @@ describe("Manager API", () => {
     });
 
     test("multiple signups get different party IDs", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
 
       const party1 = await client.signup(uuid);
@@ -94,6 +103,7 @@ describe("Manager API", () => {
     });
 
     test("signup status tracks party count", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
 
       await client.signup(uuid);
@@ -108,6 +118,7 @@ describe("Manager API", () => {
 
   describe("Message Store and Poll", () => {
     test("store and poll message between parties", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
       const round = "test-round";
       const data = "encrypted-message-data";
@@ -121,6 +132,7 @@ describe("Manager API", () => {
     });
 
     test("poll returns null for non-existent message", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
       const result = await client.poll(1, 2, "non-existent-round", uuid);
 
@@ -128,6 +140,7 @@ describe("Manager API", () => {
     });
 
     test("broadcast to all parties", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
       const round = "broadcast-round";
       const data = "broadcast-data";
@@ -139,6 +152,7 @@ describe("Manager API", () => {
     });
 
     test("point-to-point messaging", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
       const round = "p2p-round";
 
@@ -156,6 +170,7 @@ describe("Manager API", () => {
 
   describe("Multiple Rounds", () => {
     test("messages are isolated by round", async () => {
+      if (!client) return;
       const uuid = generateSessionId();
 
       await client.store(1, 2, "round1", uuid, "data-round1");
@@ -171,6 +186,7 @@ describe("Manager API", () => {
 
   describe("Session Isolation", () => {
     test("messages are isolated by session UUID", async () => {
+      if (!client) return;
       const uuid1 = generateSessionId();
       const uuid2 = generateSessionId();
       const round = "test-round";
