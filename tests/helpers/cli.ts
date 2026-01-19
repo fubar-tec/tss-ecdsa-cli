@@ -105,7 +105,8 @@ export async function waitForOutput(
   pattern: string | RegExp,
   timeout = 30000
 ): Promise<string> {
-  const reader = proc.stdout.getReader();
+  const stdout = proc.stdout as ReadableStream<Uint8Array>;
+  const reader = stdout.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   const startTime = Date.now();

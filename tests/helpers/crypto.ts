@@ -61,9 +61,16 @@ export function isValidEddsaSignature(sig: string): boolean {
   return isValidHex(sig) && sig.length === 128;
 }
 
+interface ParsedSignature {
+  r?: string;
+  s?: string;
+  recid?: number;
+  recovery_id?: number;
+}
+
 export function parseEcdsaSignature(output: string): EcdsaSignature | null {
   try {
-    const parsed = JSON.parse(output.trim());
+    const parsed = JSON.parse(output.trim()) as ParsedSignature;
     if (parsed.r && parsed.s) {
       return {
         r: parsed.r,

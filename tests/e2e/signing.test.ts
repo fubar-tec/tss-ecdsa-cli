@@ -106,7 +106,6 @@ describe("Message Signing (ECDSA)", () => {
   }, 120000);
 
   test("signing with HD path works", async () => {
-
     const message = randomMessageHash();
     const binary = getCliBinary();
     const hdPath = "0/0";
@@ -291,7 +290,7 @@ describe("Message Signing (EdDSA)", () => {
 });
 
 describe("Signing Error Handling", () => {
-  let manager: ManagerInstance;
+  let manager: ManagerInstance | undefined;
 
   beforeAll(async () => {
     if (!cliExists()) return;
@@ -301,10 +300,14 @@ describe("Signing Error Handling", () => {
   });
 
   afterAll(async () => {
-    await manager.stop();
+    if (manager) {
+      await manager.stop();
+    }
   });
 
   test("signing with invalid message hash fails", async () => {
+    if (!manager) return;
+
     const sessionId = generateSessionId();
     const keyFile1 = join(TEST_KEYS_DIR, `${sessionId}-err1.json`);
     const keyFile2 = join(TEST_KEYS_DIR, `${sessionId}-err2.json`);
@@ -339,6 +342,8 @@ describe("Signing Error Handling", () => {
   }, 180000);
 
   test("signing with non-existent key file fails", async () => {
+    if (!manager) return;
+
     const message = randomMessageHash();
     const result = await runCli(
       ["sign", "/non/existent/key.json", "1/2", message, "-a", manager.url],
